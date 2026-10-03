@@ -1,5 +1,7 @@
 @import 'lenis/dist/lenis.css';
 .enquiry-form fieldset{border:0;padding:0;margin:0;min-width:0}
+.enquiry-intro,.enquiry-form{min-width:0}
+@media(max-width:700px){.enquiry.enquiry{grid-template-columns:minmax(0,1fr)}.enquiry.enquiry h2{font-size:clamp(48px,17vw,77px)}.enquiry-form input,.enquiry-form select,.enquiry-form textarea{min-width:0;max-width:100%}.form-note{overflow-wrap:anywhere}}
 .hero{--brand-size:min(24.8vw,40svh)}
 @media(min-width:701px){.hero.hero{height:auto;min-height:max(100svh,850px);max-height:none;display:grid;grid-template-rows:auto auto;align-content:space-between;padding-bottom:65px}.hero .hero-copy{max-width:none;width:min(850px,68%);padding-top:clamp(140px,17svh,195px);padding-bottom:48px}.hero .hero-brand{position:relative;left:auto;right:auto;bottom:auto;margin:0 3vw;font-size:var(--brand-size);line-height:.85}.hero .campaign-note{top:45%;right:var(--edge)}.hero .hero-bottom{bottom:18px}}
 .static-nav{position:absolute;top:90px;left:24px;z-index:25;display:flex;gap:20px;color:#f3ede2;font-size:12px}.occasion-button.active .occasion-name{color:#211713!important}.occasion-button.active .occasion-name:after{content:' •';font-family:Georgia,serif;color:#8b5643;font-size:.6em}.hero{min-height:740px}
