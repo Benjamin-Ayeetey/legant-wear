@@ -1,0 +1,6 @@
+images
+design-assets
+node_modules
+.git
+.env
+.env.*
