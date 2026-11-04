@@ -23,19 +23,21 @@ document.querySelectorAll('img').forEach(img => img.addEventListener('error', ()
   img.style.opacity = '0';
 }));
 const campaign = ['campaign-cover', 'campaign-smile', 'campaign-profile'];
-let campaignIndex = 0;
-function changeCampaign(delta) {
-  campaignIndex = (campaignIndex + delta + campaign.length) % campaign.length;
-  const img = $('#hero-image');
-  const key = campaign[campaignIndex];
-  img.src = `/media/${key}-1600.webp`;
+// Keep the current photograph visible until its replacement has decoded.
+const heroImage = $('#hero-image');
+const campaignImages = [heroImage, ...campaign.slice(1).map(key => {
+  const img = new Image();
   img.srcset = `/media/${key}-800.webp 800w, /media/${key}-1600.webp 1600w`;
+  img.sizes = heroImage.sizes;
+  img.src = `/media/${key}-1600.webp`;
   img.alt = photos[key];
-  $('.campaign-count').textContent = `0${campaignIndex + 1} / 03`;
-  if (!reduced()) gsap.fromTo(img, { opacity: .55, scale: 1.035 }, { opacity: 1, scale: 1, duration: .8, overwrite: true });
-}
-$('.campaign-prev').addEventListener('click', () => changeCampaign(-1));
-$('.campaign-next').addEventListener('click', () => changeCampaign(1));
+  img.width = 1800;
+  img.height = 2250;
+  img.setAttribute('aria-hidden', 'true');
+  $('.hero-media').append(img);
+  return img;
+})];
+const campaignReady = campaignImages.map(img => img.decode().then(() => true, () => false));
 const occasions = {
   Office: ['campaign-seated', 'THE OFFICE / 01', 'Make room for your ambition. Let’s find a look that feels like you.', 'Find my office look'],
   Outings: ['campaign-smile', 'OUT & ABOUT / 02', 'A little ease. A little expression. Tell us where the day takes you.', 'Find my outing look'],
@@ -138,17 +140,60 @@ mm.add('(prefers-reduced-motion: no-preference)', () => {
   lenis = new Lenis({duration:1.05, smoothWheel:true});
   const tick = time => lenis?.raf(time * 1000);
   lenis.on('scroll', ScrollTrigger.update); gsap.ticker.add(tick);
+  let campaignIndex = 0;
+  let campaignTimer;
+  let campaignFade;
+  let disposed = false;
+  function scheduleCampaign() {
+    clearTimeout(campaignTimer);
+    if (!disposed && !document.hidden) campaignTimer = setTimeout(advanceCampaign, 6000);
+  }
+  async function advanceCampaign() {
+    const nextIndex = (campaignIndex + 1) % campaignImages.length;
+    const ready = await campaignReady[nextIndex];
+    if (disposed || document.hidden) return;
+    if (!ready) { scheduleCampaign(); return; }
+    const current = campaignImages[campaignIndex];
+    const next = campaignImages[nextIndex];
+    gsap.set(next, {zIndex: 1, opacity: 0});
+    campaignFade = gsap.to(next, {opacity: 1, duration: 1.2, ease: 'sine.inOut', onComplete() {
+      gsap.set(current, {opacity: 0});
+      gsap.set(next, {zIndex: 0});
+      current.setAttribute('aria-hidden', 'true');
+      next.removeAttribute('aria-hidden');
+      campaignIndex = nextIndex;
+      scheduleCampaign();
+    }});
+  }
+  const campaignVisibility = () => {
+    clearTimeout(campaignTimer);
+    if (document.hidden) campaignFade?.pause();
+    else if (campaignFade?.paused()) campaignFade.resume();
+    else scheduleCampaign();
+  };
+  document.addEventListener('visibilitychange', campaignVisibility);
+  scheduleCampaign();
   const intro = gsap.timeline({defaults:{ease:'power3.out'}});
   intro.from('.hero-copy > *', {y:24, opacity:.2, stagger:.12, duration:1}, .1)
-    .from('.hero-brand', {y:60, opacity:.5, duration:1.3}, .2)
-    .from('.hero-media img', {scale:1.06, duration:1.7}, 0);
+    .from('.hero-brand', {y:60, opacity:.5, duration:1.3}, .2);
   document.querySelectorAll('.reveal-heading').forEach(heading => {
     const words = heading.querySelectorAll('.split-word');
     gsap.from(words.length ? words : heading, {y:words.length ? 60 : 28, opacity:.15, duration:.9, stagger:.055, scrollTrigger:{trigger:heading,start:'top 90%',once:true}});
   });
   document.querySelectorAll('.story-image,.lookbook-photo,.occasion-preview,.manifesto-bottom').forEach(el => gsap.from(el, {y:35, opacity:.25, duration:1, scrollTrigger:{trigger:el,start:'top 92%',once:true}}));
   gsap.to('.editorial-image', {yPercent:5, ease:'none', scrollTrigger:{trigger:'.editorial',start:'top bottom',end:'bottom top',scrub:true}});
-  return () => { gsap.ticker.remove(tick); lenis.destroy(); lenis = undefined; };
+  return () => {
+    disposed = true;
+    clearTimeout(campaignTimer);
+    campaignFade?.kill();
+    document.removeEventListener('visibilitychange', campaignVisibility);
+    campaignImages.forEach((img, index) => {
+      gsap.set(img, {clearProps: 'opacity,zIndex'});
+      if (index) img.setAttribute('aria-hidden', 'true');
+      else img.removeAttribute('aria-hidden');
+    });
+    gsap.ticker.remove(tick); lenis.destroy(); lenis = undefined;
+  };
 });
 document.fonts.ready.then(() => ScrollTrigger.refresh());
 document.querySelectorAll('img').forEach(img => img.addEventListener('load', () => ScrollTrigger.refresh()));
